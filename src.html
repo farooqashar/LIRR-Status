@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="LIRR Live">
+<title>LIRR Live</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b1220'/%3E%3Crect x='16' y='12' width='32' height='34' rx='8' fill='%23f5c542'/%3E%3Crect x='21' y='18' width='22' height='11' rx='2' fill='%230b1220'/%3E%3Ccircle cx='24' cy='38' r='3' fill='%230b1220'/%3E%3Ccircle cx='40' cy='38' r='3' fill='%230b1220'/%3E%3Cpath d='M20 52l6-6M44 52l-6-6' stroke='%23f5c542' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f5f7;--panel:#fff;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;
+  --accent:#b8860b;--accent-bg:#fff7db;--ok:#15803d;--late:#c2410c;--bad:#b91c1c;
+  --board:#0b1220;--board-ink:#f5c542;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#070b14;--panel:#0f1726;--ink:#e5e9f0;--muted:#8b97ab;--line:#1e293b;
+  --accent:#f5c542;--accent-bg:#2a2410;--ok:#4ade80;--late:#fb923c;--bad:#f87171;
+  --board:#0b1220;--board-ink:#f5c542;
+}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:640px;margin:0 auto;padding:0 16px calc(32px + env(safe-area-inset-bottom))}
+header{background:var(--board);color:#fff;padding:calc(14px + env(safe-area-inset-top)) 0 16px;position:sticky;top:0;z-index:5;box-shadow:0 1px 0 #ffffff12}
+.brand{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.brand h1{margin:0;font:700 18px/1 Inter;letter-spacing:.02em}
+.brand h1 span{color:var(--board-ink)}
+.updated{font:500 12px/1 'JetBrains Mono',monospace;color:#94a3b8;display:flex;align-items:center;gap:6px;background:none;border:0;cursor:pointer;padding:6px 0}
+.dot{width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 0 #4ade8088;animation:pulse 2s infinite}
+.dot.stale{background:#f59e0b;animation:none}.dot.err{background:#ef4444;animation:none}
+@keyframes pulse{0%{box-shadow:0 0 0 0 #4ade8088}70%{box-shadow:0 0 0 7px #4ade8000}100%{box-shadow:0 0 0 0 #4ade8000}}
+.route{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:end}
+.field label{display:block;font:600 10px/1 Inter;letter-spacing:.12em;text-transform:uppercase;color:#94a3b8;margin:0 0 6px 2px}
+select{width:100%;appearance:none;-webkit-appearance:none;background:#ffffff10;color:#fff;border:1px solid #ffffff22;border-radius:10px;padding:10px 28px 10px 10px;font:600 15px Inter;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a3b8' fill='none' stroke-width='1.6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;text-overflow:ellipsis}
+select option{color:#000}
+.swap{width:40px;height:42px;border-radius:10px;border:1px solid #ffffff22;background:#ffffff10;color:var(--board-ink);font-size:18px;cursor:pointer}
+.chips{display:flex;gap:6px;margin-top:10px;overflow-x:auto;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid #ffffff22;background:none;color:#cbd5e1;border-radius:999px;padding:6px 11px;font:500 13px Inter;cursor:pointer;white-space:nowrap}
+.chip.on{background:var(--board-ink);color:#0b1220;border-color:var(--board-ink);font-weight:600}
+.tabs{display:flex;gap:4px;margin:16px 0 10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px}
+.tabs button{flex:1;border:0;background:none;color:var(--muted);font:600 14px Inter;padding:8px;border-radius:9px;cursor:pointer}
+.tabs button.on{background:var(--ink);color:var(--bg)}
+.alerts{margin:12px 0 0}
+.alert{background:var(--accent-bg);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:12px;padding:10px 12px;margin-bottom:8px;font-size:13.5px}
+.alert summary{cursor:pointer;font-weight:600;list-style:none;display:flex;gap:8px}
+.alert summary::-webkit-details-marker{display:none}
+.alert summary::before{content:"⚠";color:var(--accent)}
+.alert p{margin:8px 0 0;white-space:pre-line;color:var(--muted)}
+.list{display:flex;flex-direction:column;gap:8px}
+.train{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:grid;grid-template-columns:62px 1fr auto;gap:12px;align-items:center;position:relative;overflow:hidden}
+.train::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--bc,#64748b)}
+.train.canceled{opacity:.55}
+.train.canceled .dest{text-decoration:line-through}
+.when{text-align:left}
+.mins{font:700 22px/1 'JetBrains Mono',monospace;letter-spacing:-.02em}
+.mins small{font-size:12px;font-weight:500;color:var(--muted);margin-left:1px}
+.clock{font:500 12px/1 'JetBrains Mono',monospace;color:var(--muted);margin-top:5px}
+.dest{font-weight:600;font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:4px;font-size:12.5px;color:var(--muted)}
+.st-ok{color:var(--ok)}.st-late{color:var(--late);font-weight:600}.st-bad{color:var(--bad);font-weight:700}
+.trk{text-align:center;min-width:58px}
+.trk .n{font:700 22px/1 'JetBrains Mono',monospace;border-radius:10px;padding:8px 6px 7px;display:block}
+.trk .lbl{display:block;font:600 9.5px/1 Inter;letter-spacing:.1em;text-transform:uppercase;margin-top:5px;color:var(--muted)}
+.trk.posted .n{background:var(--board);color:var(--board-ink)}
+.trk.expected .n{border:1.5px dashed var(--line);color:var(--muted);padding:6.5px 5px 5.5px}
+.trk.change .n{background:var(--late);color:#fff}
+.trk.none .n{color:var(--muted);font-size:16px}
+.empty{text-align:center;color:var(--muted);padding:48px 16px}
+.legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin:18px 0 4px;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-3px;margin-right:5px}
+.foot{text-align:center;font-size:11.5px;color:var(--muted);margin-top:14px}
+.foot a{color:inherit}
+.skel{height:72px;border-radius:14px;background:linear-gradient(90deg,var(--panel),var(--line),var(--panel));background-size:200% 100%;animation:sh 1.2s infinite}
+@keyframes sh{to{background-position:-200% 0}}
+.stops{grid-column:1/-1;font-size:12.5px;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px;margin-top:2px;display:none}
+.train.open .stops{display:block}
+.train{cursor:pointer}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand">
+      <h1>LIRR <span>Live</span></h1>
+      <button class="updated" id="upd" title="Refresh"><span class="dot" id="dot"></span><span id="updTxt">loading…</span></button>
+    </div>
+    <div class="route">
+      <div class="field"><label for="from">From</label><select id="from"></select></div>
+      <button class="swap" id="swap" aria-label="Swap stations">⇄</button>
+      <div class="field"><label for="to">To</label><select id="to"></select></div>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+</header>
+<main class="wrap">
+  <div class="alerts" id="alerts"></div>
+  <div class="tabs" role="tablist">
+    <button id="tDep" class="on">Departures</button>
+    <button id="tArr">Arrivals</button>
+  </div>
+  <div class="list" id="list"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
+  <div class="legend">
+    <span><i style="background:var(--board)"></i>Posted track</span>
+    <span><i style="border:1.5px dashed var(--muted)"></i>Expected (scheduled)</span>
+    <span><i style="background:var(--late)"></i>Track changed</span>
+  </div>
+  <div class="foot">Live data from MTA TrainTime · refreshes every 30s · tap a train for stops</div>
+</main>
+<script>
+const STATIONS = __STATIONS__;
+const BRANCH = {
+  BY:['Babylon','#00985F'], HM:['Hempstead','#CE8E00'], HH:['Port Jefferson','#006EC7'], PJ:['Port Jefferson','#006EC7'],
+  OB:['Oyster Bay','#00AF3F'], RK:['Ronkonkoma','#A626AA'], GP:['Greenport','#A626AA'], MK:['Montauk','#00B2A9'],
+  LB:['Long Beach','#FF6319'], FR:['Far Rockaway','#6E3219'], WH:['West Hempstead','#00A1DE'],
+  PW:['Port Washington','#C60C30'], BP:['Belmont Park','#60269E'], CT:['City Terminal','#4D5357'], CZ:['City Terminal','#4D5357']
+};
+const QUICK = [['HUN','NYK'],['HUN','GCT'],['NYK','HUN'],['GCT','HUN'],['HUN',''],['JAM','']];
+const $ = id => document.getElementById(id);
+const name = c => STATIONS[c] || c;
+const short = c => ({NYK:'Penn',GCT:'Grand Central',ATL:'Atlantic',HUN:'Huntington',JAM:'Jamaica'})[c] || name(c);
+const store = {get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
+
+const qs = new URLSearchParams(location.search);
+let from = (qs.get('from') || store.get('from') || 'HUN').toUpperCase();
+let to = (qs.get('to') ?? store.get('to') ?? 'NYK').toUpperCase();
+let mode = 'dep';
+let data = null, lastOk = 0, timer = null, ctrl = null;
+const open = new Set();
+
+function fillSelects(){
+  const opts = Object.entries(STATIONS).map(([c,n]) => `<option value="${c}">${n}</option>`).join('');
+  $('from').innerHTML = opts;
+  $('to').innerHTML = '<option value="">Any destination</option>' + opts;
+}
+function syncUI(){
+  $('from').value = from; $('to').value = to;
+  $('chips').innerHTML = QUICK.map(([f,t]) =>
+    `<button class="chip ${f===from&&t===to?'on':''}" data-f="${f}" data-t="${t}">${short(f)} → ${t?short(t):'All'}</button>`).join('');
+  $('tDep').classList.toggle('on', mode==='dep'); $('tArr').classList.toggle('on', mode==='arr');
+  $('tArr').disabled = false;
+  const u = new URL(location); u.searchParams.set('from',from); to?u.searchParams.set('to',to):u.searchParams.delete('to');
+  history.replaceState(null,'',u);
+  store.set('from',from); store.set('to',to);
+  document.title = `LIRR Live · ${short(from)}${to?' → '+short(to):''}`;
+}
+function setRoute(f,t){ from=f; to=t; open.clear(); syncUI(); data=null; render(); load(); }
+
+$('from').onchange = e => setRoute(e.target.value, to===e.target.value?'':to);
+$('to').onchange = e => setRoute(from, e.target.value===from?'':e.target.value);
+$('swap').onclick = () => to && setRoute(to, from);
+$('chips').onclick = e => { const b=e.target.closest('.chip'); if(b) setRoute(b.dataset.f, b.dataset.t); };
+$('tDep').onclick = () => { mode='dep'; syncUI(); render(); };
+$('tArr').onclick = () => { mode='arr'; syncUI(); render(); };
+$('upd').onclick = () => load();
+$('list').onclick = e => { const c=e.target.closest('.train'); if(!c) return; open.has(c.dataset.id)?open.delete(c.dataset.id):open.add(c.dataset.id); c.classList.toggle('open'); };
+
+const fmtClock = t => new Date(t*1000).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/New_York'});
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+
+function status(t){
+  if (t.canceled) return ['Canceled','st-bad'];
+  if (t.held) return ['Held','st-late'];
+  if (t.otp == null) return ['Scheduled',''];
+  const m = Math.round(-t.otp/60);
+  if (m >= 2) return [`${m} min late`,'st-late'];
+  return ['On time','st-ok'];
+}
+function trackCell(t){
+  if (t.track){
+    // Some stations post platform letters (A/B) against scheduled codes (R1/R2) — only flag real changes.
+    const num = s => /^\d+$/.test(s || '');
+    const changed = t.trackChange || (num(t.track) && num(t.schedTrack) && t.track !== t.schedTrack);
+    return `<div class="trk ${changed?'change':'posted'}"><span class="n">${esc(t.track)}</span><span class="lbl">${changed?'Changed':'Track'}</span></div>`;
+  }
+  if (t.schedTrack) return `<div class="trk expected"><span class="n">${esc(t.schedTrack)}</span><span class="lbl">Expected</span></div>`;
+  return `<div class="trk none"><span class="n">—</span><span class="lbl">Track</span></div>`;
+}
+
+function rows(){
+  if (!data) return null;
+  const now = Date.now()/1000;
+  return data.trains.filter(t => {
+    if (t.time < now - 60) return false;
+    const last = t.stops[t.stops.length-1];
+    const terminating = last === from;
+    if (mode==='dep'){
+      if (terminating) return false;
+      if (to && !t.stops.includes(to)) return false;
+    } else {
+      if (!terminating) return false;
+    }
+    return true;
+  });
+}
+
+function render(){
+  const list = $('list');
+  const r = rows();
+  if (!r){ list.innerHTML = '<div class="skel"></div><div class="skel"></div><div class="skel"></div>'; return; }
+  renderAlerts();
+  if (!r.length){
+    list.innerHTML = `<div class="empty">No ${mode==='dep'?'departures':'arrivals'} ${mode==='dep'&&to?`from ${esc(name(from))} to ${esc(name(to))} `:''}in the next few hours.</div>`;
+    return;
+  }
+  const now = Date.now()/1000;
+  list.innerHTML = r.map(t => {
+    const [bn,bc] = BRANCH[t.branch] || [t.branch||'', '#64748b'];
+    const m = Math.max(0, Math.round((t.time-now)/60));
+    const minsHtml = m===0 ? 'Now' : m<60 ? `${m}<small>min</small>` : `${Math.floor(m/60)}h${String(m%60).padStart(2,'0')}`;
+    const [sTxt,sCls] = status(t);
+    const destCode = mode==='dep' ? t.stops[t.stops.length-1] : t.stops[0];
+    const nStops = mode==='dep' ? (to ? t.stops.indexOf(to)+1 : t.stops.length) : t.stops.length-1;
+    const stopList = mode==='dep' ? t.stops : t.stops.slice(0,-1);
+    return `<div class="train ${t.canceled?'canceled':''} ${open.has(t.id)?'open':''}" data-id="${esc(t.id)}" style="--bc:${bc}">
+      <div class="when"><div class="mins">${minsHtml}</div><div class="clock">${fmtClock(t.time)}</div></div>
+      <div style="min-width:0">
+        <div class="dest">${mode==='arr' ? (t.stops.length>1 ? 'From '+esc(name(destCode)) : 'Arriving · '+(t.dir==='E'?'eastbound':'westbound')) : esc(name(destCode))}</div>
+        <div class="meta"><span class="${sCls}">${sTxt}</span><span>${esc(bn)}</span><span>#${esc(t.num)}</span>${t.peak?'<span>Peak</span>':''}${mode==='dep'?`<span>${nStops} stop${nStops===1?'':'s'}${to?' to '+esc(short(to)):''}</span>`:''}</div>
+      </div>
+      ${trackCell(t)}
+      <div class="stops">${mode==='arr'&&stopList.length===0?'Route details not provided for this train':mode==='dep'?'Stops: ':'Route: '}${stopList.map(c => c===to?`<b>${esc(name(c))}</b>`:esc(name(c))).join(' · ')}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderAlerts(){
+  const a = (data?.alerts||[]).filter(x => x.header);
+  $('alerts').innerHTML = a.map(x => `<details class="alert"><summary>${esc(x.header)}</summary>${x.text?`<p>${esc(x.text)}</p>`:''}</details>`).join('');
+}
+
+function tick(){
+  const age = lastOk ? Math.round((Date.now()-lastOk)/1000) : null;
+  const dot = $('dot');
+  if (age == null){ return; }
+  dot.className = 'dot' + (age > 90 ? ' stale' : '');
+  $('updTxt').textContent = age < 5 ? 'live' : age < 60 ? `${age}s ago` : `${Math.floor(age/60)}m ago`;
+  render();
+}
+
+async function load(){
+  ctrl?.abort(); ctrl = new AbortController();
+  const station = from;
+  try{
+    const r = await fetch(`/api/arrivals?station=${station}`, {signal: ctrl.signal});
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.status);
+    if (station !== from) return;
+    data = j; lastOk = Date.now(); tick(); render();
+  }catch(e){
+    if (e.name === 'AbortError') return;
+    $('dot').className = 'dot err'; $('updTxt').textContent = 'offline · tap to retry';
+    if (!data) $('list').innerHTML = `<div class="empty">Couldn't reach TrainTime right now. Tap the status above to retry.</div>`;
+  }
+}
+
+fillSelects(); syncUI(); load();
+setInterval(load, 30000);
+setInterval(tick, 5000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+</script>
+</body>
+</html>
