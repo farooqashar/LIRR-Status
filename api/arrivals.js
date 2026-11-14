@@ -1,5 +1,12 @@
 // Proxy for the MTA TrainTime backend. Trims the payload and adds caching + CORS.
 const UPSTREAM = 'https://backend-unified.mylirr.org/arrivals/';
+const TIMEOUT_MS = 8000;
+
+// Short edge cache on errors so an upstream outage doesn't fan out to every poll.
+const fail = (res, status, error) => {
+  res.setHeader('Cache-Control', 's-maxage=5');
+  res.status(status).json({ error });
+};
 
 const strip = (html = '') =>
   html
@@ -13,17 +20,19 @@ const strip = (html = '') =>
     .trim();
 
 export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
   const station = String(req.query.station || 'HUN').toUpperCase();
   if (!/^[A-Z0-9]{2,4}$/.test(station)) {
-    res.status(400).json({ error: 'bad station code' });
+    fail(res, 400, 'bad station code');
     return;
   }
   try {
     const r = await fetch(UPSTREAM + station, {
       headers: { 'Accept-Version': '3.0', Accept: 'application/json' },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!r.ok) {
-      res.status(502).json({ error: `upstream ${r.status}` });
+      fail(res, 502, `upstream ${r.status}`);
       return;
     }
     const j = await r.json();
@@ -51,10 +60,11 @@ export default async function handler(req, res) {
       branches: a.branches || [],
       planned: !!a.is_planned,
     }));
-    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Cache-Control', 's-maxage=15, stale-while-revalidate=30');
     res.status(200).json({ station, fetchedAt: Math.floor(Date.now() / 1000), trains, alerts });
   } catch (e) {
-    res.status(502).json({ error: String(e) });
+    console.error('arrivals', station, e);
+    if (e?.name === 'TimeoutError') fail(res, 504, 'upstream timeout');
+    else fail(res, 502, 'upstream error');
   }
 }
