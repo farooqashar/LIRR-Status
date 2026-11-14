@@ -134,6 +134,7 @@ if (!valid(to) || to === from) to = '';
 let mode = 'dep';
 let data = null, lastOk = 0, lastErr = 0, timer = null, ctrl = null;
 const open = new Set();
+const openAlerts = new Set();
 
 function fillSelects(){
   const opts = Object.entries(STATIONS).map(([c,n]) => `<option value="${c}">${n}</option>`).join('');
@@ -151,7 +152,7 @@ function syncUI(){
   store.set('from',from); store.set('to',to);
   document.title = `LIRR Live · ${short(from)}${to?' → '+short(to):''}`;
 }
-function setRoute(f,t){ from=f; to=t; open.clear(); syncUI(); data=null; render(); load(); }
+function setRoute(f,t){ from=f; to=t; open.clear(); openAlerts.clear(); syncUI(); data=null; render(); load(); }
 
 $('from').onchange = e => setRoute(e.target.value, to===e.target.value?'':to);
 $('to').onchange = e => setRoute(from, e.target.value===from?'':e.target.value);
@@ -161,6 +162,7 @@ $('tDep').onclick = () => { mode='dep'; syncUI(); render(); };
 $('tArr').onclick = () => { mode='arr'; syncUI(); render(); };
 $('upd').onclick = () => load();
 $('list').onclick = e => { const c=e.target.closest('.train'); if(!c) return; open.has(c.dataset.id)?open.delete(c.dataset.id):open.add(c.dataset.id); c.classList.toggle('open'); };
+$('alerts').addEventListener('toggle', e => { const d=e.target; d.open?openAlerts.add(d.dataset.key):openAlerts.delete(d.dataset.key); }, true);
 
 const fmtClock = t => new Date(t*1000).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/New_York'});
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
@@ -233,7 +235,9 @@ function render(){
 
 function renderAlerts(){
   const a = (data?.alerts||[]).filter(x => x.header);
-  $('alerts').innerHTML = a.map(x => `<details class="alert"><summary>${esc(x.header)}</summary>${x.text?`<p>${esc(x.text)}</p>`:''}</details>`).join('');
+  const keys = new Set(a.map(x => x.header));
+  for (const k of openAlerts) if (!keys.has(k)) openAlerts.delete(k);
+  $('alerts').innerHTML = a.map(x => `<details class="alert" data-key="${esc(x.header)}" ${openAlerts.has(x.header)?'open':''}><summary>${esc(x.header)}</summary>${x.text?`<p>${esc(x.text)}</p>`:''}</details>`).join('');
 }
 
 function tick(){
