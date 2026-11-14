@@ -79,6 +79,7 @@ select option{color:#000}
 .stops{grid-column:1/-1;font-size:12.5px;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px;margin-top:2px;display:none}
 .train.open .stops{display:block}
 .train{cursor:pointer}
+.train:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 </style>
 </head>
 <body>
@@ -99,8 +100,8 @@ select option{color:#000}
 <main class="wrap">
   <div class="alerts" id="alerts"></div>
   <div class="tabs" role="tablist">
-    <button id="tDep" class="on">Departures</button>
-    <button id="tArr">Arrivals</button>
+    <button id="tDep" class="on" role="tab" aria-selected="true">Departures</button>
+    <button id="tArr" role="tab" aria-selected="false">Arrivals</button>
   </div>
   <div class="list" id="list"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
   <div class="legend">
@@ -145,6 +146,7 @@ function syncUI(){
   $('chips').innerHTML = QUICK.map(([f,t]) =>
     `<button class="chip ${f===from&&t===to?'on':''}" data-f="${f}" data-t="${t}">${short(f)} → ${t?short(t):'All'}</button>`).join('');
   $('tDep').classList.toggle('on', mode==='dep'); $('tArr').classList.toggle('on', mode==='arr');
+  $('tDep').setAttribute('aria-selected', mode==='dep'); $('tArr').setAttribute('aria-selected', mode==='arr');
   $('tArr').disabled = false;
   const u = new URL(location); u.searchParams.set('from',from); to?u.searchParams.set('to',to):u.searchParams.delete('to');
   history.replaceState(null,'',u);
@@ -160,7 +162,9 @@ $('chips').onclick = e => { const b=e.target.closest('.chip'); if(b) setRoute(b.
 $('tDep').onclick = () => { mode='dep'; syncUI(); render(); };
 $('tArr').onclick = () => { mode='arr'; syncUI(); render(); };
 $('upd').onclick = () => load();
-$('list').onclick = e => { const c=e.target.closest('.train'); if(!c) return; open.has(c.dataset.id)?open.delete(c.dataset.id):open.add(c.dataset.id); c.classList.toggle('open'); };
+function toggleTrain(c){ open.has(c.dataset.id)?open.delete(c.dataset.id):open.add(c.dataset.id); c.setAttribute('aria-expanded', c.classList.toggle('open')); }
+$('list').onclick = e => { const c=e.target.closest('.train'); if(c) toggleTrain(c); };
+$('list').onkeydown = e => { const c=e.target.closest('.train'); if(c && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); toggleTrain(c); } };
 
 const fmtClock = t => new Date(t*1000).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/New_York'});
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
@@ -211,6 +215,8 @@ function render(){
     return;
   }
   const now = Date.now()/1000;
+  // Re-rendering replaces the cards, so put keyboard focus back on the same train.
+  const focusId = document.activeElement?.closest?.('#list .train')?.dataset.id;
   list.innerHTML = r.map(t => {
     const [bn,bc] = BRANCH[t.branch] || [t.branch||'', '#64748b'];
     const m = Math.max(0, Math.round((t.time-now)/60));
@@ -219,16 +225,18 @@ function render(){
     const destCode = mode==='dep' ? t.stops[t.stops.length-1] : t.stops[0];
     const nStops = mode==='dep' ? (to ? t.stops.indexOf(to)+1 : t.stops.length) : t.stops.length-1;
     const stopList = mode==='dep' ? t.stops : t.stops.slice(0,-1);
-    return `<div class="train ${t.canceled?'canceled':''} ${open.has(t.id)?'open':''}" data-id="${esc(t.id)}" style="--bc:${bc}">
+    const sid = 'stops-' + String(t.id).replace(/[^\w-]/g,'_');
+    return `<div class="train ${t.canceled?'canceled':''} ${open.has(t.id)?'open':''}" data-id="${esc(t.id)}" style="--bc:${bc}" role="button" tabindex="0" aria-expanded="${open.has(t.id)}" aria-controls="${sid}">
       <div class="when"><div class="mins">${minsHtml}</div><div class="clock">${fmtClock(t.time)}</div></div>
       <div style="min-width:0">
         <div class="dest">${mode==='arr' ? (t.stops.length>1 ? 'From '+esc(name(destCode)) : 'Arriving · '+(t.dir==='E'?'eastbound':'westbound')) : esc(name(destCode))}</div>
         <div class="meta"><span class="${sCls}">${sTxt}</span><span>${esc(bn)}</span><span>#${esc(t.num)}</span>${t.peak?'<span>Peak</span>':''}${mode==='dep'?`<span>${nStops} stop${nStops===1?'':'s'}${to?' to '+esc(short(to)):''}</span>`:''}</div>
       </div>
       ${trackCell(t)}
-      <div class="stops">${mode==='arr'&&stopList.length===0?'Route details not provided for this train':mode==='dep'?'Stops: ':'Route: '}${stopList.map(c => c===to?`<b>${esc(name(c))}</b>`:esc(name(c))).join(' · ')}</div>
+      <div class="stops" id="${sid}">${mode==='arr'&&stopList.length===0?'Route details not provided for this train':mode==='dep'?'Stops: ':'Route: '}${stopList.map(c => c===to?`<b>${esc(name(c))}</b>`:esc(name(c))).join(' · ')}</div>
     </div>`;
   }).join('');
+  if (focusId != null) [...list.querySelectorAll('.train')].find(c => c.dataset.id === focusId)?.focus();
 }
 
 function renderAlerts(){
