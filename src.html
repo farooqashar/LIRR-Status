@@ -148,6 +148,7 @@ function syncUI(){
     `<button class="chip ${f===from&&t===to?'on':''}" data-f="${f}" data-t="${t}">${short(f)} → ${t?short(t):'All'}</button>`).join('');
   $('tDep').classList.toggle('on', mode==='dep'); $('tArr').classList.toggle('on', mode==='arr');
   $('tDep').setAttribute('aria-selected', mode==='dep'); $('tArr').setAttribute('aria-selected', mode==='arr');
+  $('tDep').tabIndex = mode==='dep' ? 0 : -1; $('tArr').tabIndex = mode==='arr' ? 0 : -1;
   $('tArr').disabled = false;
   const u = new URL(location); u.searchParams.set('from',from); to?u.searchParams.set('to',to):u.searchParams.delete('to');
   history.replaceState(null,'',u);
@@ -162,6 +163,7 @@ $('swap').onclick = () => to && setRoute(to, from);
 $('chips').onclick = e => { const b=e.target.closest('.chip'); if(b) setRoute(b.dataset.f, b.dataset.t); };
 $('tDep').onclick = () => { mode='dep'; syncUI(); render(); };
 $('tArr').onclick = () => { mode='arr'; syncUI(); render(); };
+$('tDep').parentNode.onkeydown = e => { const m={ArrowLeft:'dep',ArrowRight:'arr',Home:'dep',End:'arr'}[e.key]; if(!m) return; e.preventDefault(); $(m==='dep'?'tDep':'tArr').focus(); if(m!==mode){ mode=m; syncUI(); render(); } };
 $('upd').onclick = () => load();
 function toggleTrain(c){ open.has(c.dataset.id)?open.delete(c.dataset.id):open.add(c.dataset.id); c.setAttribute('aria-expanded', c.classList.toggle('open')); }
 $('list').onclick = e => { const c=e.target.closest('.train'); if(c) toggleTrain(c); };
@@ -238,7 +240,7 @@ function render(){
       <div class="stops" id="${sid}">${mode==='arr'&&stopList.length===0?'Route details not provided for this train':mode==='dep'?'Stops: ':'Route: '}${stopList.map(c => c===to?`<b>${esc(name(c))}</b>`:esc(name(c))).join(' · ')}</div>
     </div>`;
   }).join('');
-  if (focusId != null) [...list.querySelectorAll('.train')].find(c => c.dataset.id === focusId)?.focus();
+  if (focusId != null) [...list.querySelectorAll('.train')].find(c => c.dataset.id === focusId)?.focus({preventScroll:true});
 }
 
 function renderAlerts(){
