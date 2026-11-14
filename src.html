@@ -14,12 +14,12 @@
 :root{
   --bg:#f4f5f7;--panel:#fff;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;
   --accent:#b8860b;--accent-bg:#fff7db;--ok:#15803d;--late:#c2410c;--bad:#b91c1c;
-  --board:#0b1220;--board-ink:#f5c542;
+  --board:#0b1220;--board-ink:#f5c542;--board-edge:#0b1220;
 }
 @media (prefers-color-scheme:dark){:root{
   --bg:#070b14;--panel:#0f1726;--ink:#e5e9f0;--muted:#8b97ab;--line:#1e293b;
   --accent:#f5c542;--accent-bg:#2a2410;--ok:#4ade80;--late:#fb923c;--bad:#f87171;
-  --board:#0b1220;--board-ink:#f5c542;
+  --board:#0b1220;--board-ink:#f5c542;--board-edge:#f5c542;
 }}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
@@ -65,8 +65,8 @@ select option{color:#000}
 .trk{text-align:center;min-width:58px}
 .trk .n{font:700 22px/1 'JetBrains Mono',monospace;border-radius:10px;padding:8px 6px 7px;display:block}
 .trk .lbl{display:block;font:600 9.5px/1 Inter;letter-spacing:.1em;text-transform:uppercase;margin-top:5px;color:var(--muted)}
-.trk.posted .n{background:var(--board);color:var(--board-ink)}
-.trk.expected .n{border:1.5px dashed var(--line);color:var(--muted);padding:6.5px 5px 5.5px}
+.trk.posted .n{background:var(--board);color:var(--board-ink);border:1.5px solid var(--board-edge);padding:6.5px 5px 5.5px}
+.trk.expected .n{border:1.5px dashed var(--muted);color:var(--muted);padding:6.5px 5px 5.5px}
 .trk.change .n{background:var(--late);color:#fff}
 .trk.none .n{color:var(--muted);font-size:16px}
 .empty{text-align:center;color:var(--muted);padding:48px 16px}
@@ -105,7 +105,7 @@ select option{color:#000}
   </div>
   <div class="list" id="list"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
   <div class="legend">
-    <span><i style="background:var(--board)"></i>Posted track</span>
+    <span><i style="background:var(--board);border:1.5px solid var(--board-edge)"></i>Posted track</span>
     <span><i style="border:1.5px dashed var(--muted)"></i>Expected (scheduled)</span>
     <span><i style="background:var(--late)"></i>Track changed</span>
   </div>
@@ -135,6 +135,7 @@ if (!valid(to) || to === from) to = '';
 let mode = 'dep';
 let data = null, lastOk = 0, lastErr = 0, timer = null, ctrl = null;
 const open = new Set();
+const openAlerts = new Set();
 
 function fillSelects(){
   const opts = Object.entries(STATIONS).map(([c,n]) => `<option value="${c}">${n}</option>`).join('');
@@ -153,7 +154,7 @@ function syncUI(){
   store.set('from',from); store.set('to',to);
   document.title = `LIRR Live · ${short(from)}${to?' → '+short(to):''}`;
 }
-function setRoute(f,t){ from=f; to=t; open.clear(); syncUI(); data=null; render(); load(); }
+function setRoute(f,t){ from=f; to=t; open.clear(); openAlerts.clear(); syncUI(); data=null; render(); load(); }
 
 $('from').onchange = e => setRoute(e.target.value, to===e.target.value?'':to);
 $('to').onchange = e => setRoute(from, e.target.value===from?'':e.target.value);
@@ -165,6 +166,7 @@ $('upd').onclick = () => load();
 function toggleTrain(c){ open.has(c.dataset.id)?open.delete(c.dataset.id):open.add(c.dataset.id); c.setAttribute('aria-expanded', c.classList.toggle('open')); }
 $('list').onclick = e => { const c=e.target.closest('.train'); if(c) toggleTrain(c); };
 $('list').onkeydown = e => { const c=e.target.closest('.train'); if(c && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); toggleTrain(c); } };
+$('alerts').addEventListener('toggle', e => { const d=e.target; d.open?openAlerts.add(d.dataset.key):openAlerts.delete(d.dataset.key); }, true);
 
 const fmtClock = t => new Date(t*1000).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/New_York'});
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
@@ -241,7 +243,9 @@ function render(){
 
 function renderAlerts(){
   const a = (data?.alerts||[]).filter(x => x.header);
-  $('alerts').innerHTML = a.map(x => `<details class="alert"><summary>${esc(x.header)}</summary>${x.text?`<p>${esc(x.text)}</p>`:''}</details>`).join('');
+  const keys = new Set(a.map(x => x.header));
+  for (const k of openAlerts) if (!keys.has(k)) openAlerts.delete(k);
+  $('alerts').innerHTML = a.map(x => `<details class="alert" data-key="${esc(x.header)}" ${openAlerts.has(x.header)?'open':''}><summary>${esc(x.header)}</summary>${x.text?`<p>${esc(x.text)}</p>`:''}</details>`).join('');
 }
 
 function tick(){
