@@ -126,8 +126,11 @@ const short = c => ({NYK:'Penn',GCT:'Grand Central',ATL:'Atlantic',HUN:'Huntingt
 const store = {get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
 
 const qs = new URLSearchParams(location.search);
-let from = (qs.get('from') || store.get('from') || 'HUN').toUpperCase();
+// Only known station codes are used (and so persisted); a bad link or stale storage falls back.
+const valid = c => !!c && Object.hasOwn(STATIONS, c);
+let from = [qs.get('from'), store.get('from'), 'HUN'].map(c => (c || '').toUpperCase()).find(valid);
 let to = (qs.get('to') ?? store.get('to') ?? 'NYK').toUpperCase();
+if (!valid(to) || to === from) to = '';
 let mode = 'dep';
 let data = null, lastOk = 0, timer = null, ctrl = null;
 const open = new Set();
@@ -246,7 +249,7 @@ async function load(){
   ctrl?.abort(); ctrl = new AbortController();
   const station = from;
   try{
-    const r = await fetch(`/api/arrivals?station=${station}`, {signal: ctrl.signal});
+    const r = await fetch(`/api/arrivals?station=${encodeURIComponent(station)}`, {signal: ctrl.signal});
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || r.status);
     if (station !== from) return;
