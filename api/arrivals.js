@@ -8,14 +8,27 @@ const fail = (res, status, error) => {
   res.status(status).json({ error });
 };
 
+const ENTITIES = {
+  amp: '&', nbsp: ' ', quot: '"', lt: '<', gt: '>', apos: "'",
+  lsquo: '\u2018', rsquo: '\u2019', ldquo: '\u201C', rdquo: '\u201D',
+  ndash: '\u2013', mdash: '\u2014', hellip: '\u2026', bull: '\u2022',
+};
+
+// Single pass, so `&amp;#39;` becomes `&#39;` and is not decoded again.
+const decode = (s) =>
+  s.replace(/&(?:#(\d+)|#x([0-9a-f]+)|([a-z]+));/gi, (m, dec, hex, name) => {
+    if (name) return ENTITIES[name.toLowerCase()] ?? m;
+    const cp = dec ? parseInt(dec, 10) : parseInt(hex, 16);
+    return cp > 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : m;
+  });
+
 const strip = (html = '') =>
-  html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&#39;|&rsquo;/g, "'")
+  decode(
+    html
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+  )
     .replace(/\n{2,}/g, '\n')
     .trim();
 
