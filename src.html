@@ -14,12 +14,12 @@
 :root{
   --bg:#f4f5f7;--panel:#fff;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;
   --accent:#b8860b;--accent-bg:#fff7db;--ok:#15803d;--late:#c2410c;--bad:#b91c1c;
-  --board:#0b1220;--board-ink:#f5c542;
+  --board:#0b1220;--board-ink:#f5c542;--board-edge:#0b1220;
 }
 @media (prefers-color-scheme:dark){:root{
   --bg:#070b14;--panel:#0f1726;--ink:#e5e9f0;--muted:#8b97ab;--line:#1e293b;
   --accent:#f5c542;--accent-bg:#2a2410;--ok:#4ade80;--late:#fb923c;--bad:#f87171;
-  --board:#0b1220;--board-ink:#f5c542;
+  --board:#0b1220;--board-ink:#f5c542;--board-edge:#f5c542;
 }}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
@@ -65,8 +65,8 @@ select option{color:#000}
 .trk{text-align:center;min-width:58px}
 .trk .n{font:700 22px/1 'JetBrains Mono',monospace;border-radius:10px;padding:8px 6px 7px;display:block}
 .trk .lbl{display:block;font:600 9.5px/1 Inter;letter-spacing:.1em;text-transform:uppercase;margin-top:5px;color:var(--muted)}
-.trk.posted .n{background:var(--board);color:var(--board-ink)}
-.trk.expected .n{border:1.5px dashed var(--line);color:var(--muted);padding:6.5px 5px 5.5px}
+.trk.posted .n{background:var(--board);color:var(--board-ink);border:1.5px solid var(--board-edge);padding:6.5px 5px 5.5px}
+.trk.expected .n{border:1.5px dashed var(--muted);color:var(--muted);padding:6.5px 5px 5.5px}
 .trk.change .n{background:var(--late);color:#fff}
 .trk.none .n{color:var(--muted);font-size:16px}
 .empty{text-align:center;color:var(--muted);padding:48px 16px}
@@ -104,7 +104,7 @@ select option{color:#000}
   </div>
   <div class="list" id="list"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
   <div class="legend">
-    <span><i style="background:var(--board)"></i>Posted track</span>
+    <span><i style="background:var(--board);border:1.5px solid var(--board-edge)"></i>Posted track</span>
     <span><i style="border:1.5px dashed var(--muted)"></i>Expected (scheduled)</span>
     <span><i style="background:var(--late)"></i>Track changed</span>
   </div>
