@@ -28,7 +28,7 @@ header{background:var(--board);color:#fff;padding:calc(14px + env(safe-area-inse
 .brand{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .brand h1{margin:0;font:700 18px/1 Inter;letter-spacing:.02em}
 .brand h1 span{color:var(--board-ink)}
-.updated{font:500 12px/1 'JetBrains Mono',monospace;color:#94a3b8;display:flex;align-items:center;gap:6px;background:none;border:0;cursor:pointer;padding:6px 0}
+.updated{font:500 12px/1 'JetBrains Mono',monospace;color:#94a3b8;display:flex;align-items:center;gap:6px;background:none;border:0;cursor:pointer;min-height:44px;padding:0 8px;margin:-10px -8px}
 .dot{width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 0 #4ade8088;animation:pulse 2s infinite}
 .dot.stale{background:#f59e0b;animation:none}.dot.err{background:#ef4444;animation:none}
 @keyframes pulse{0%{box-shadow:0 0 0 0 #4ade8088}70%{box-shadow:0 0 0 7px #4ade8000}100%{box-shadow:0 0 0 0 #4ade8000}}
