@@ -129,8 +129,11 @@ const store = {get(k){try{return localStorage.getItem(k)}catch{return null}},set
 const qs = new URLSearchParams(location.search);
 // Only known station codes are used (and so persisted); a bad link or stale storage falls back.
 const valid = c => !!c && Object.hasOwn(STATIONS, c);
+// A link with a route in it means exactly that route; an absent or empty `to` is "Any destination".
+// Only a bare visit (no from/to) restores the stored route.
+const linked = qs.has('from') || qs.has('to');
 let from = [qs.get('from'), store.get('from'), 'HUN'].map(c => (c || '').toUpperCase()).find(valid);
-let to = (qs.get('to') ?? store.get('to') ?? 'NYK').toUpperCase();
+let to = (linked ? qs.get('to') ?? '' : store.get('to') ?? 'NYK').toUpperCase();
 if (!valid(to) || to === from) to = '';
 let mode = 'dep';
 let data = null, lastOk = 0, lastErr = 0, timer = null, ctrl = null;
@@ -150,7 +153,7 @@ function syncUI(){
   $('tDep').setAttribute('aria-selected', mode==='dep'); $('tArr').setAttribute('aria-selected', mode==='arr');
   $('tDep').tabIndex = mode==='dep' ? 0 : -1; $('tArr').tabIndex = mode==='arr' ? 0 : -1;
   $('tArr').disabled = false;
-  const u = new URL(location); u.searchParams.set('from',from); to?u.searchParams.set('to',to):u.searchParams.delete('to');
+  const u = new URL(location); u.searchParams.set('from',from); u.searchParams.set('to',to);
   history.replaceState(null,'',u);
   store.set('from',from); store.set('to',to);
   document.title = `LIRR Live · ${short(from)}${to?' → '+short(to):''}`;
