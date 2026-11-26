@@ -136,7 +136,7 @@ let from = [qs.get('from'), store.get('from'), 'HUN'].map(c => (c || '').toUpper
 let to = (linked ? qs.get('to') ?? '' : store.get('to') ?? 'NYK').toUpperCase();
 if (!valid(to) || to === from) to = '';
 let mode = 'dep';
-let data = null, lastOk = 0, lastErr = 0, timer = null, ctrl = null;
+let data = null, lastOk = 0, lastErr = 0, dataAt = 0, timer = null, ctrl = null;
 const open = new Set();
 const openAlerts = new Set();
 
@@ -158,7 +158,7 @@ function syncUI(){
   store.set('from',from); store.set('to',to);
   document.title = `LIRR Live · ${short(from)}${to?' → '+short(to):''}`;
 }
-function setRoute(f,t){ from=f; to=t; open.clear(); openAlerts.clear(); syncUI(); data=null; render(); load(); }
+function setRoute(f,t){ from=f; to=t; open.clear(); openAlerts.clear(); syncUI(); data=null; dataAt=0; render(); load(); }
 
 $('from').onchange = e => setRoute(e.target.value, to===e.target.value?'':to);
 $('to').onchange = e => setRoute(from, e.target.value===from?'':e.target.value);
@@ -254,7 +254,8 @@ function renderAlerts(){
 }
 
 function tick(){
-  const age = lastOk ? Math.round((Date.now()-lastOk)/1000) : null;
+  // Age of the data itself (fetchedAt), not of the request: the API response may come from the edge cache.
+  const age = dataAt ? Math.round((Date.now()-dataAt)/1000) : null;
   const dot = $('dot');
   if (age == null){ return; }
   const ago = age < 60 ? `${age}s ago` : `${Math.floor(age/60)}m ago`;
@@ -276,7 +277,9 @@ async function load(){
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || r.status);
     if (station !== from) return;
-    data = j; lastOk = Date.now(); lastErr = 0; tick(); render();
+    data = j; lastOk = Date.now(); lastErr = 0;
+    dataAt = Number.isFinite(j.fetchedAt) ? Math.min(Date.now(), j.fetchedAt * 1000) : Date.now();
+    tick(); render();
   }catch(e){
     if (e.name === 'AbortError') return;
     lastErr = Date.now();
