@@ -37,6 +37,7 @@ header{background:var(--board);color:#fff;padding:calc(14px + env(safe-area-inse
 select{width:100%;appearance:none;-webkit-appearance:none;background:#ffffff10;color:#fff;border:1px solid #ffffff22;border-radius:10px;padding:10px 28px 10px 10px;font:600 15px Inter;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a3b8' fill='none' stroke-width='1.6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;text-overflow:ellipsis}
 select option{color:#000}
 .swap{width:40px;height:42px;border-radius:10px;border:1px solid #ffffff22;background:#ffffff10;color:var(--board-ink);font-size:18px;cursor:pointer}
+.swap:disabled{opacity:.35;cursor:default}
 .chips{display:flex;gap:6px;margin-top:10px;overflow-x:auto;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:none;border:1px solid #ffffff22;background:none;color:#cbd5e1;border-radius:999px;padding:6px 11px;font:500 13px Inter;cursor:pointer;white-space:nowrap}
@@ -152,7 +153,7 @@ function syncUI(){
   $('tDep').classList.toggle('on', mode==='dep'); $('tArr').classList.toggle('on', mode==='arr');
   $('tDep').setAttribute('aria-selected', mode==='dep'); $('tArr').setAttribute('aria-selected', mode==='arr');
   $('tDep').tabIndex = mode==='dep' ? 0 : -1; $('tArr').tabIndex = mode==='arr' ? 0 : -1;
-  $('tArr').disabled = false;
+  $('swap').disabled = !to; $('swap').title = to ? '' : 'Pick a To station to swap';
   const u = new URL(location); u.searchParams.set('from',from); u.searchParams.set('to',to);
   history.replaceState(null,'',u);
   store.set('from',from); store.set('to',to);
