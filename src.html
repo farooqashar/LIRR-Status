@@ -37,6 +37,7 @@ header{background:var(--board);color:#fff;padding:calc(14px + env(safe-area-inse
 select{width:100%;appearance:none;-webkit-appearance:none;background:#ffffff10;color:#fff;border:1px solid #ffffff22;border-radius:10px;padding:10px 28px 10px 10px;font:600 15px Inter;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a3b8' fill='none' stroke-width='1.6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;text-overflow:ellipsis}
 select option{color:#000}
 .swap{width:40px;height:42px;border-radius:10px;border:1px solid #ffffff22;background:#ffffff10;color:var(--board-ink);font-size:18px;cursor:pointer}
+.swap:disabled{opacity:.35;cursor:default}
 .chips{display:flex;gap:6px;margin-top:10px;overflow-x:auto;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:none;border:1px solid #ffffff22;background:none;color:#cbd5e1;border-radius:999px;padding:6px 11px;font:500 13px Inter;cursor:pointer;white-space:nowrap}
@@ -94,7 +95,7 @@ select option{color:#000}
       <button class="swap" id="swap" aria-label="Swap stations">⇄</button>
       <div class="field"><label for="to">To</label><select id="to"></select></div>
     </div>
-    <div class="chips" id="chips"></div>
+    <div class="chips" id="chips" role="group" aria-label="Quick routes"></div>
   </div>
 </header>
 <main class="wrap">
@@ -118,11 +119,14 @@ const BRANCH = {
   BY:['Babylon','#00985F'], HM:['Hempstead','#CE8E00'], HH:['Port Jefferson','#006EC7'], PJ:['Port Jefferson','#006EC7'],
   OB:['Oyster Bay','#00AF3F'], RK:['Ronkonkoma','#A626AA'], GP:['Greenport','#A626AA'], MK:['Montauk','#00B2A9'],
   LB:['Long Beach','#FF6319'], FR:['Far Rockaway','#6E3219'], WH:['West Hempstead','#00A1DE'],
-  PW:['Port Washington','#C60C30'], BP:['Belmont Park','#60269E'], CT:['City Terminal','#4D5357'], CZ:['City Terminal','#4D5357']
+  PW:['Port Washington','#C60C30'], BP:['Belmont Park','#60269E'], CT:['City Terminal','#4D5357'], CZ:['City Terminal','#4D5357'],
+  CI:['City Terminal','#4D5357'], GY:['Greenport','#A626AA']
 };
 const QUICK = [['HUN','NYK'],['HUN','GCT'],['NYK','HUN'],['GCT','HUN'],['HUN',''],['JAM','']];
 const $ = id => document.getElementById(id);
-const name = c => STATIONS[c] || c;
+// Display-only names for stop codes that aren't selectable stations.
+const EXTRA = {HIL:'Hillside Facility'};
+const name = c => STATIONS[c] || EXTRA[c] || c;
 const short = c => ({NYK:'Penn',GCT:'Grand Central',ATL:'Atlantic',HUN:'Huntington',JAM:'Jamaica'})[c] || name(c);
 const store = {get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
 
@@ -136,7 +140,7 @@ let from = [qs.get('from'), store.get('from'), 'HUN'].map(c => (c || '').toUpper
 let to = (linked ? qs.get('to') ?? '' : store.get('to') ?? 'NYK').toUpperCase();
 if (!valid(to) || to === from) to = '';
 let mode = 'dep';
-let data = null, lastOk = 0, lastErr = 0, dataAt = 0, timer = null, ctrl = null;
+let data = null, lastOk = 0, lastErr = 0, dataAt = 0, loadErr = false, timer = null, ctrl = null;
 const open = new Set();
 const openAlerts = new Set();
 
@@ -148,17 +152,21 @@ function fillSelects(){
 function syncUI(){
   $('from').value = from; $('to').value = to;
   $('chips').innerHTML = QUICK.map(([f,t]) =>
-    `<button class="chip ${f===from&&t===to?'on':''}" data-f="${f}" data-t="${t}">${short(f)} → ${t?short(t):'All'}</button>`).join('');
+    `<button class="chip ${f===from&&t===to?'on':''}" data-f="${f}" data-t="${t}" aria-pressed="${f===from&&t===to}" aria-label="${short(f)} to ${t?short(t):'all destinations'}">${short(f)} → ${t?short(t):'All'}</button>`).join('');
   $('tDep').classList.toggle('on', mode==='dep'); $('tArr').classList.toggle('on', mode==='arr');
   $('tDep').setAttribute('aria-selected', mode==='dep'); $('tArr').setAttribute('aria-selected', mode==='arr');
   $('tDep').tabIndex = mode==='dep' ? 0 : -1; $('tArr').tabIndex = mode==='arr' ? 0 : -1;
-  $('tArr').disabled = false;
+  $('swap').disabled = !to; $('swap').title = to ? '' : 'Pick a To station to swap';
   const u = new URL(location); u.searchParams.set('from',from); u.searchParams.set('to',to);
   history.replaceState(null,'',u);
   store.set('from',from); store.set('to',to);
   document.title = `LIRR Live · ${short(from)}${to?' → '+short(to):''}`;
 }
-function setRoute(f,t){ from=f; to=t; open.clear(); openAlerts.clear(); syncUI(); data=null; dataAt=0; render(); load(); }
+function setRoute(f,t){ from=f; to=t; open.clear(); openAlerts.clear(); syncUI();
+  // Nothing from the previous station carries over: its trains, alerts, age or error.
+  data=null; dataAt=0; loadErr=false; lastOk=0; lastErr=0;
+  $('dot').className = 'dot'; $('updTxt').textContent = 'loading…';
+  render(); load(); }
 
 $('from').onchange = e => setRoute(e.target.value, to===e.target.value?'':to);
 $('to').onchange = e => setRoute(from, e.target.value===from?'':e.target.value);
@@ -215,8 +223,13 @@ function rows(){
 function render(){
   const list = $('list');
   const r = rows();
-  if (!r){ list.innerHTML = '<div class="skel"></div><div class="skel"></div><div class="skel"></div>'; return; }
   renderAlerts();
+  if (!r){
+    list.innerHTML = loadErr
+      ? `<div class="empty">Couldn't reach TrainTime right now. Tap the status above to retry.</div>`
+      : '<div class="skel"></div><div class="skel"></div><div class="skel"></div>';
+    return;
+  }
   if (!r.length){
     list.innerHTML = `<div class="empty">No ${mode==='dep'?'departures':'arrivals'} ${mode==='dep'&&to?`from ${esc(name(from))} to ${esc(name(to))} `:''}in the next few hours.</div>`;
     return;
@@ -277,22 +290,22 @@ async function load(){
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || r.status);
     if (station !== from) return;
-    data = j; lastOk = Date.now(); lastErr = 0;
+    data = j; lastOk = Date.now(); lastErr = 0; loadErr = false;
     dataAt = Number.isFinite(j.fetchedAt) ? Math.min(Date.now(), j.fetchedAt * 1000) : Date.now();
     tick(); render();
   }catch(e){
     if (e.name === 'AbortError') return;
-    lastErr = Date.now();
+    lastErr = Date.now(); loadErr = true;
     $('dot').className = 'dot err'; $('updTxt').textContent = 'offline · tap to retry';
     if (lastOk) tick();
-    if (!data) $('list').innerHTML = `<div class="empty">Couldn't reach TrainTime right now. Tap the status above to retry.</div>`;
+    if (!data) render();
   }
 }
 
 fillSelects(); syncUI(); load();
-setInterval(load, 30000);
-setInterval(tick, 5000);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+setInterval(() => { if (!document.hidden) load(); }, 30000);
+setInterval(() => { if (!document.hidden) tick(); }, 5000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { tick(); load(); } });
 </script>
   <!-- Feedback widget (github.com/farooqashar/feedback-relay) -->
   <script src="https://feedback-relay.asharfarooq.workers.dev/widget.js" data-project="LIRR Live" defer></script>
