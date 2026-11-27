@@ -118,11 +118,14 @@ const BRANCH = {
   BY:['Babylon','#00985F'], HM:['Hempstead','#CE8E00'], HH:['Port Jefferson','#006EC7'], PJ:['Port Jefferson','#006EC7'],
   OB:['Oyster Bay','#00AF3F'], RK:['Ronkonkoma','#A626AA'], GP:['Greenport','#A626AA'], MK:['Montauk','#00B2A9'],
   LB:['Long Beach','#FF6319'], FR:['Far Rockaway','#6E3219'], WH:['West Hempstead','#00A1DE'],
-  PW:['Port Washington','#C60C30'], BP:['Belmont Park','#60269E'], CT:['City Terminal','#4D5357'], CZ:['City Terminal','#4D5357']
+  PW:['Port Washington','#C60C30'], BP:['Belmont Park','#60269E'], CT:['City Terminal','#4D5357'], CZ:['City Terminal','#4D5357'],
+  CI:['City Terminal','#4D5357'], GY:['Greenport','#A626AA']
 };
 const QUICK = [['HUN','NYK'],['HUN','GCT'],['NYK','HUN'],['GCT','HUN'],['HUN',''],['JAM','']];
 const $ = id => document.getElementById(id);
-const name = c => STATIONS[c] || c;
+// Display-only names for stop codes that aren't selectable stations.
+const EXTRA = {HIL:'Hillside Facility'};
+const name = c => STATIONS[c] || EXTRA[c] || c;
 const short = c => ({NYK:'Penn',GCT:'Grand Central',ATL:'Atlantic',HUN:'Huntington',JAM:'Jamaica'})[c] || name(c);
 const store = {get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
 
