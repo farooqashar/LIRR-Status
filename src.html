@@ -94,7 +94,7 @@ select option{color:#000}
       <button class="swap" id="swap" aria-label="Swap stations">⇄</button>
       <div class="field"><label for="to">To</label><select id="to"></select></div>
     </div>
-    <div class="chips" id="chips"></div>
+    <div class="chips" id="chips" role="group" aria-label="Quick routes"></div>
   </div>
 </header>
 <main class="wrap">
@@ -151,7 +151,7 @@ function fillSelects(){
 function syncUI(){
   $('from').value = from; $('to').value = to;
   $('chips').innerHTML = QUICK.map(([f,t]) =>
-    `<button class="chip ${f===from&&t===to?'on':''}" data-f="${f}" data-t="${t}">${short(f)} → ${t?short(t):'All'}</button>`).join('');
+    `<button class="chip ${f===from&&t===to?'on':''}" data-f="${f}" data-t="${t}" aria-pressed="${f===from&&t===to}" aria-label="${short(f)} to ${t?short(t):'all destinations'}">${short(f)} → ${t?short(t):'All'}</button>`).join('');
   $('tDep').classList.toggle('on', mode==='dep'); $('tArr').classList.toggle('on', mode==='arr');
   $('tDep').setAttribute('aria-selected', mode==='dep'); $('tArr').setAttribute('aria-selected', mode==='arr');
   $('tDep').tabIndex = mode==='dep' ? 0 : -1; $('tArr').tabIndex = mode==='arr' ? 0 : -1;
