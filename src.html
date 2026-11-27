@@ -140,7 +140,7 @@ let from = [qs.get('from'), store.get('from'), 'HUN'].map(c => (c || '').toUpper
 let to = (linked ? qs.get('to') ?? '' : store.get('to') ?? 'NYK').toUpperCase();
 if (!valid(to) || to === from) to = '';
 let mode = 'dep';
-let data = null, lastOk = 0, lastErr = 0, loadErr = false, timer = null, ctrl = null;
+let data = null, lastOk = 0, lastErr = 0, dataAt = 0, loadErr = false, timer = null, ctrl = null;
 const open = new Set();
 const openAlerts = new Set();
 
@@ -164,7 +164,7 @@ function syncUI(){
 }
 function setRoute(f,t){ from=f; to=t; open.clear(); openAlerts.clear(); syncUI();
   // Nothing from the previous station carries over: its trains, alerts, age or error.
-  data=null; loadErr=false; lastOk=0; lastErr=0;
+  data=null; dataAt=0; loadErr=false; lastOk=0; lastErr=0;
   $('dot').className = 'dot'; $('updTxt').textContent = 'loading…';
   render(); load(); }
 
@@ -267,7 +267,8 @@ function renderAlerts(){
 }
 
 function tick(){
-  const age = lastOk ? Math.round((Date.now()-lastOk)/1000) : null;
+  // Age of the data itself (fetchedAt), not of the request: the API response may come from the edge cache.
+  const age = dataAt ? Math.round((Date.now()-dataAt)/1000) : null;
   const dot = $('dot');
   if (age == null){ return; }
   const ago = age < 60 ? `${age}s ago` : `${Math.floor(age/60)}m ago`;
@@ -289,7 +290,9 @@ async function load(){
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || r.status);
     if (station !== from) return;
-    data = j; lastOk = Date.now(); lastErr = 0; loadErr = false; tick(); render();
+    data = j; lastOk = Date.now(); lastErr = 0; loadErr = false;
+    dataAt = Number.isFinite(j.fetchedAt) ? Math.min(Date.now(), j.fetchedAt * 1000) : Date.now();
+    tick(); render();
   }catch(e){
     if (e.name === 'AbortError') return;
     lastErr = Date.now(); loadErr = true;
