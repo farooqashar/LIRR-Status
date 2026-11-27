@@ -299,9 +299,9 @@ async function load(){
 }
 
 fillSelects(); syncUI(); load();
-setInterval(load, 30000);
-setInterval(tick, 5000);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+setInterval(() => { if (!document.hidden) load(); }, 30000);
+setInterval(() => { if (!document.hidden) tick(); }, 5000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { tick(); load(); } });
 </script>
   <!-- Feedback widget (github.com/farooqashar/feedback-relay) -->
   <script src="https://feedback-relay.asharfarooq.workers.dev/widget.js" data-project="LIRR Live" defer></script>
